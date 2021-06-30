@@ -143,10 +143,12 @@ void yolov2_hls_ps(network *net, float *input)
 	int WeightQ[32];
 
 	file_size = get_file_size("weight_reorg_ap16.bin");
-	copy_file2mem("weight_reorg_ap16.bin", file_size, WEIGHT_BASEADDR);
+	//copy_file2mem("weight_reorg_ap16.bin", file_size, WEIGHT_BASEADDR);
+	copy_file2mem("weight_reorg_ap16.bin", file_size, WEIGHT_BASEADDR+PL_BASEADDR);
 
 	file_size = get_file_size("bias_ap16.bin");
-	copy_file2mem("bias_ap16.bin", file_size, BETA_BASEADDR);
+	//copy_file2mem("bias_ap16.bin", file_size, BETA_BASEADDR);
+	copy_file2mem("bias_ap16.bin", file_size, BETA_BASEADDR+PL_BASEADDR);
 
 	file_size = get_file_size("weights_ap16_offset_add.bin");
 	printf("weights_ap16_offset_add's size = %d\n", file_size);
@@ -195,7 +197,7 @@ void yolov2_hls_ps(network *net, float *input)
 	{
 		region_buf[i] = (int16_t)(input[i]*tmp_iofmQ_pow);
 	}
-	copy_mem2dev((uint8_t *)region_buf, 2*416*416*3, in_ptr[0]);
+	copy_mem2dev((uint8_t *)region_buf, 2*416*416*3, in_ptr[0]+PL_BASEADDR);
 
 	int offset_index = 0;
 	int woffset = 0;
@@ -293,11 +295,12 @@ void yolov2_hls_ps(network *net, float *input)
 					{
 						inputQ_idx = 13;
 					}
-
+					//printf("before FPGA_Acc\n");
 					FPGA_Acc(in_ptr[i], out_ptr[i], woffset, boffset,
 						k_s_pad_ltype, iofm_num, ifm_w_h, ofm_w_h, TRTC, TMTN, OFM_num_bound, mLoopsxTM, mLoops_a1xTM, 0,
 						TRowTCol, IHW, OHW, KK_INumxKK, en_bits, WeightQ[offset_index], BetaQ[offset_index], iofmQ[inputQ_idx], iofmQ[offset_index+1]);
 
+					//printf("end FPGA_Acc\n");
 					woffset += (weight_offset[offset_index] + weights_ap16_offset_add[offset_index])/2;
 					boffset += (beta_offset[offset_index] + bias_ap16_offset_add[offset_index])/2;
 					offset_index++;
@@ -327,7 +330,7 @@ void yolov2_hls_ps(network *net, float *input)
 					ofm_h = 32*13;
 					//reorg_cpu(in_ptr[i], ofm_w, ofm_h, 4, 2, out_ptr[i]);
 
-					copy_dev2mem((uint8_t *)region_buf, 26*26*64*sizeof(int16_t), in_ptr[i]);
+					copy_dev2mem((uint8_t *)region_buf, 26*26*64*sizeof(int16_t), in_ptr[i]+PL_BASEADDR);
 //					tmp_ptr_int32 = in_ptr[i];
 //					memcpy((int16_t *)(region_buf), (int16_t *)(tmp_ptr_int32), 26*26*64*sizeof(int16_t));
 
@@ -340,7 +343,7 @@ void yolov2_hls_ps(network *net, float *input)
 					reorg_cpu(region_buf, ofm_w, ofm_h, 4, 2, tmp_ptr_int16);
 					for(int k = 0; k<13*256; k++)
 						memcpy(region_buf + k*14 + (out_left_num/2), tmp_ptr_int16 + k*13, 13*sizeof(int16_t));
-					copy_mem2dev((uint8_t *)region_buf, out_left_num + 13*14*256*sizeof(int16_t), out_align);
+					copy_mem2dev((uint8_t *)region_buf, out_left_num + 13*14*256*sizeof(int16_t), out_align+PL_BASEADDR);
 //					memcpy(out_ptr[i], (int32_t *)region_buf, 13*14*256*sizeof(int32_t)/2);
 					break;
 				case ROUTE:
@@ -356,7 +359,7 @@ void yolov2_hls_ps(network *net, float *input)
 					out_align = in_ptr[i] & 0xFFFFF000;
 					out_left_num = in_ptr[i] & 0xFFF;
 
-					copy_dev2mem((uint8_t *)region_buf, out_left_num + 13*14*425*sizeof(int16_t), out_align);
+					copy_dev2mem((uint8_t *)region_buf, out_left_num + 13*14*425*sizeof(int16_t), out_align+PL_BASEADDR);
 					tmp_iofmQ_pow = pow(2.0, -iofmQ[offset_index]);
 					for(int k = 0; k<13*425; k++)
 						for(int j = 0; j < 13; j++)

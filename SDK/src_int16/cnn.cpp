@@ -54,7 +54,7 @@ int copy_file2mem(char *bin_file,uint32_t byte_num,unsigned long in_buffer)
 		printf("cannot malloc buffer %d byte\n", HPAGESIZE);
 		return -1;
 	}
-	printf("Total Byte Num = %d\n Address 0x%X\n", byte_num, in_buffer);
+	printf("Total Byte Num = %d\n Address 0x%lx\n", byte_num, in_buffer);
 	FILE *fp;
 	if( (fp = fopen(bin_file, "rb")) == NULL)fprintf(stderr,"CANNOT OPEN bin_file\n");
 	int rd_num;
@@ -126,7 +126,7 @@ int FPGA_Acc(uint64_t In_Address, uint64_t Out_Address, uint64_t Weight_offset, 
 		perror("1:Init Mapping memory for absolute memory access failed.\n");
 		return -1;
 	}
-
+	//printf("before wait for ap_idle!\n");
 	while(1)
 	{
 		ap_idle = ((ReadReg(xbase_address, XFPGA_ACC_CTRL_BUS_ADDR_AP_CTRL) >> 2) & 0x1);
@@ -182,6 +182,7 @@ int FPGA_Acc(uint64_t In_Address, uint64_t Out_Address, uint64_t Weight_offset, 
 	while(1)
 	{
 		ap_done = ((ReadReg(xbase_address, XFPGA_ACC_CTRL_BUS_ADDR_AP_CTRL) >> 1) & 0x1);
+		//printf("wait for ap_done!\n");
 		if(ap_done)
 			break;
 	}

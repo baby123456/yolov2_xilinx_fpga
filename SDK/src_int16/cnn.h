@@ -70,15 +70,55 @@
 //#define BETA_BASEADDR    0x16140000//0x00005414 =     21524 Bytes
 //#define MEM_BASEADDR     0x16180000//
 
-#define ACC_BASEADDR     0xA0000000
+/*
+ * reserve 1GB start from 1GB
+ */
+/*
+#define ACC_BASEADDR     0x80000000
 #define WEIGHT_BASEADDR  0x60000000//0x06129EC0 = 101883584 Bytes
 #define BETA_BASEADDR    0x66140000//0x00005414 =     21524 Bytes
 #define MEM_BASEADDR     0x66180000//
+*/
+
+/*
+ * ROLE0
+ */
+/*
+#define PL_BASEADDR	 0x4800000000
+#define ACC_BASEADDR     0x82000000
+#define WEIGHT_BASEADDR  0x0		//0x06129EC0 = 101883584 Bytes
+#define BETA_BASEADDR    0x8000000	//0x00005414 =     21524 Bytes
+#define MEM_BASEADDR     0xC000000	//
+*/
+
+/*
+#define PL_BASEADDR	 0x4900000000
+#define ACC_BASEADDR     0x82100000
+#define WEIGHT_BASEADDR  0x0		//0x06129EC0 = 101883584 Bytes
+#define BETA_BASEADDR    0x8000000	//0x00005414 =     21524 Bytes
+#define MEM_BASEADDR     0xC000000	//
+*/
+
+
+#define PL_BASEADDR	 0x4900000000
+#define ACC_BASEADDR     0x82100000
+#define WEIGHT_BASEADDR  0x0		//0x06129EC0 = 101883584 Bytes
+#define BETA_BASEADDR    0x6140000	//0x00005414 =     21524 Bytes
+#define MEM_BASEADDR     0x6180000	//
+
+
+/*
+#define PL_BASEADDR	 0x4800000000
+#define ACC_BASEADDR     0x82000000
+#define WEIGHT_BASEADDR  0x0		//0x06129EC0 = 101883584 Bytes
+#define BETA_BASEADDR    0x6140000	//0x00005414 =     21524 Bytes
+#define MEM_BASEADDR     0x6180000	//
+*/
 
 #define HW_S 2
 #define K 3
 #define Tn 2
-#define Tm 60
+#define Tm 32
 #define Tr 26
 #define Tc 26
 #define MAX_BETA_LENGTH 1024

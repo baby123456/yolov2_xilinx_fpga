@@ -12,6 +12,7 @@
 int main( int argc, char *argv[])
 {
 	//freopen("result.txt","w",stdout);
+	//printf("sizeof(unsigned long) =%lu\n",sizeof(unsigned long));
 	printf("YOLOv2 TEST Begin\n");
     	char **names = get_labels("coco.names");
 	int x;
