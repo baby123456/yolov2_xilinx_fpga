@@ -1,8 +1,25 @@
 
 #include "cnn.h"
 
+#ifdef DMA_TRANSFER
+#include "dma-proxy.h"
+#endif
+
+extern struct dma_proxy_channel_interface *tx_proxy_interface_p;
+extern struct dma_proxy_channel_interface *rx_proxy_interface_p;
+extern int rx_proxy_fd, tx_proxy_fd;
+extern int dummy;
+
 void copy_mem2dev(uint8_t *orig,uint32_t byte_num, unsigned long in_buffer)
 {
+#ifdef DMA_TRANSFER
+	tx_proxy_interface_p->length = byte_num;
+	memcpy( (void *)tx_proxy_interface_p->buffer, orig, byte_num);
+	dummy = in_buffer;
+	ioctl(tx_proxy_fd, 0, &dummy);
+	if (tx_proxy_interface_p->status != PROXY_NO_ERROR)
+			    printf("Proxy tx transfer error,%d\n",tx_proxy_interface_p->status);
+#else
 	int fd = open("/dev/mem", O_RDWR);
 	unsigned char *virtual_addr;
 	uint32_t RequestByteNum;// must page
@@ -22,10 +39,21 @@ void copy_mem2dev(uint8_t *orig,uint32_t byte_num, unsigned long in_buffer)
 
 	munmap((void *)virtual_addr, byte_num);
 	close(fd);
+#endif
 }
 
 void copy_dev2mem(uint8_t *dst,uint32_t byte_num, unsigned long in_buffer)
 {
+#ifdef DMA_TRANSFER
+	rx_proxy_interface_p->length = byte_num;
+	memset(rx_proxy_interface_p->buffer,0,rx_proxy_interface_p->length);
+	dummy = in_buffer;
+	ioctl(rx_proxy_fd, 0, &dummy);
+	memcpy( (void* )dst, (void *)rx_proxy_interface_p->buffer, byte_num);
+	if (rx_proxy_interface_p->status != PROXY_NO_ERROR)
+			    printf("Proxy rx transfer error,%d\n",tx_proxy_interface_p->status);
+#else
+
 	int fd = open("/dev/mem", O_RDWR);
 	unsigned char *virtual_addr;
 	uint32_t RequestByteNum;// must page
@@ -45,6 +73,7 @@ void copy_dev2mem(uint8_t *dst,uint32_t byte_num, unsigned long in_buffer)
 
 	munmap((void *)virtual_addr, byte_num);
 	close(fd);
+#endif
 }
 
 int copy_file2mem(char *bin_file,uint32_t byte_num,unsigned long in_buffer)

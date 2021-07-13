@@ -8,9 +8,45 @@
 //#include <time.h>
 #include <sys/time.h>
 #include "yolov2.h"
+#include "cnn.h"
+
+#ifdef DMA_TRANSFER
+#include "dma-proxy.h"
+#endif
+
+struct dma_proxy_channel_interface *tx_proxy_interface_p;
+struct dma_proxy_channel_interface *rx_proxy_interface_p;
+int rx_proxy_fd, tx_proxy_fd;
+int dummy;
 
 int main( int argc, char *argv[])
 {
+#ifdef DMA_TRANSFER	
+	// Open the DMA proxy device for the transmit and receive channels
+	tx_proxy_fd = open("/dev/h2c", O_RDWR);
+
+	if (tx_proxy_fd < 1) {
+		printf("Unable to open DMA proxy device file");
+		exit(EXIT_FAILURE);
+	}
+
+	rx_proxy_fd = open("/dev/c2h", O_RDWR);
+	if (tx_proxy_fd < 1) {
+		printf("Unable to open DMA proxy device file");
+		exit(EXIT_FAILURE);
+	}
+
+	// Map the transmit and receive channels memory into user space so it's accessible
+	tx_proxy_interface_p = (struct dma_proxy_channel_interface *)mmap(NULL, sizeof(struct dma_proxy_channel_interface),
+									PROT_READ | PROT_WRITE, MAP_SHARED, tx_proxy_fd, 0);
+
+	rx_proxy_interface_p = (struct dma_proxy_channel_interface *)mmap(NULL, sizeof(struct dma_proxy_channel_interface),
+									PROT_READ | PROT_WRITE, MAP_SHARED, rx_proxy_fd, 0);
+	if ((rx_proxy_interface_p == MAP_FAILED) || (tx_proxy_interface_p == MAP_FAILED)) {
+		printf("Failed to mmap\n");
+		exit(EXIT_FAILURE);
+	}
+#endif
 	//freopen("result.txt","w",stdout);
 	//printf("sizeof(unsigned long) =%lu\n",sizeof(unsigned long));
 	printf("YOLOv2 TEST Begin\n");
@@ -46,7 +82,7 @@ int main( int argc, char *argv[])
 	first = what_time_is_it_now();
 	yolov2_hls_ps(net, X);
 	second = what_time_is_it_now();
-	printf("%s: Predicted in %f seconds.\n", input_imgfn, second - first);
+	printf("%s: %s Predicted in %f seconds.\n", input_imgfn, argv[0], second - first);
 
 	int nboxes = 0;
     	float nms=.45;
@@ -69,8 +105,15 @@ int main( int argc, char *argv[])
 
 	free_image(im);
 	free_image(sized);
-	printf("YOLOv2 TEST End\n");
 
+#ifdef DMA_TRANSFER
+	//Unmap the proxy channel interface memory and close the device files before leaving
+	munmap(tx_proxy_interface_p, sizeof(struct dma_proxy_channel_interface));
+	munmap(rx_proxy_interface_p, sizeof(struct dma_proxy_channel_interface));
+	close(tx_proxy_fd);
+	close(rx_proxy_fd);
+#endif
+	printf("YOLOv2 TEST End\n");
 	return 0;
 }
 

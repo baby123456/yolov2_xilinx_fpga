@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include "cnn.h"
 
 double what_time_is_it_now()
 {
@@ -124,6 +125,8 @@ void yolov2_hls_ps(network *net, float *input)
 		512, 1024, 512, 1024, 1024, 1024, 64, 1024, 425, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 	uint32_t file_size = 0;
+	
+	struct timeval timeval_begin, timeval_end;
 
 	file_size = get_file_size("iofm_Q.bin");
 	int32_t *iofmQ = (int32_t *)malloc(file_size);
@@ -143,12 +146,32 @@ void yolov2_hls_ps(network *net, float *input)
 	int WeightQ[32];
 
 	file_size = get_file_size("weight_reorg_ap16.bin");
-	//copy_file2mem("weight_reorg_ap16.bin", file_size, WEIGHT_BASEADDR);
+
+	gettimeofday (&timeval_begin, NULL);
+	unsigned int elapsed = 0;
+
+#ifdef DMA_TRANSFER
+	copy_file2mem("weight_reorg_ap16.bin", file_size, WEIGHT_BASEADDR);
+#else
 	copy_file2mem("weight_reorg_ap16.bin", file_size, WEIGHT_BASEADDR+PL_BASEADDR);
+#endif
+	 gettimeofday (&timeval_end, NULL);
+	 elapsed = (unsigned int)((timeval_end.tv_sec  - timeval_begin.tv_sec)*1000000 + (timeval_end.tv_usec - timeval_begin.tv_usec));
+	 printf("weight copy_file2mem run %u us\n",elapsed);
+
 
 	file_size = get_file_size("bias_ap16.bin");
-	//copy_file2mem("bias_ap16.bin", file_size, BETA_BASEADDR);
+
+	gettimeofday (&timeval_begin, NULL);
+#ifdef DMA_TRANSFER
+	copy_file2mem("bias_ap16.bin", file_size, BETA_BASEADDR);
+#else
 	copy_file2mem("bias_ap16.bin", file_size, BETA_BASEADDR+PL_BASEADDR);
+#endif
+	 gettimeofday (&timeval_end, NULL);
+	 elapsed = (unsigned int)((timeval_end.tv_sec  - timeval_begin.tv_sec)*1000000 + (timeval_end.tv_usec - timeval_begin.tv_usec));
+	 printf("bias copy_file2mem run %u us\n",elapsed);
+
 
 	file_size = get_file_size("weights_ap16_offset_add.bin");
 	printf("weights_ap16_offset_add's size = %d\n", file_size);
@@ -197,8 +220,11 @@ void yolov2_hls_ps(network *net, float *input)
 	{
 		region_buf[i] = (int16_t)(input[i]*tmp_iofmQ_pow);
 	}
+#ifdef DMA_TRANSFER
+	copy_mem2dev((uint8_t *)region_buf, 2*416*416*3, in_ptr[0] );
+#else
 	copy_mem2dev((uint8_t *)region_buf, 2*416*416*3, in_ptr[0]+PL_BASEADDR);
-
+#endif
 	int offset_index = 0;
 	int woffset = 0;
 	int boffset = 0;
@@ -329,8 +355,12 @@ void yolov2_hls_ps(network *net, float *input)
 					ofm_w = 26;
 					ofm_h = 32*13;
 					//reorg_cpu(in_ptr[i], ofm_w, ofm_h, 4, 2, out_ptr[i]);
-
+#ifdef DMA_TRANSFER
+					copy_dev2mem((uint8_t *)region_buf, 26*26*64*sizeof(int16_t), in_ptr[i] );
+#else
 					copy_dev2mem((uint8_t *)region_buf, 26*26*64*sizeof(int16_t), in_ptr[i]+PL_BASEADDR);
+#endif
+
 //					tmp_ptr_int32 = in_ptr[i];
 //					memcpy((int16_t *)(region_buf), (int16_t *)(tmp_ptr_int32), 26*26*64*sizeof(int16_t));
 
@@ -343,8 +373,14 @@ void yolov2_hls_ps(network *net, float *input)
 					reorg_cpu(region_buf, ofm_w, ofm_h, 4, 2, tmp_ptr_int16);
 					for(int k = 0; k<13*256; k++)
 						memcpy(region_buf + k*14 + (out_left_num/2), tmp_ptr_int16 + k*13, 13*sizeof(int16_t));
+
+#ifdef 	DMA_TRANSFER
+					copy_mem2dev((uint8_t *)region_buf, out_left_num + 13*14*256*sizeof(int16_t), out_align );
+#else
 					copy_mem2dev((uint8_t *)region_buf, out_left_num + 13*14*256*sizeof(int16_t), out_align+PL_BASEADDR);
-//					memcpy(out_ptr[i], (int32_t *)region_buf, 13*14*256*sizeof(int32_t)/2);
+#endif
+
+					//					memcpy(out_ptr[i], (int32_t *)region_buf, 13*14*256*sizeof(int32_t)/2);
 					break;
 				case ROUTE:
 					printf("outputMemory:%8d;route ",l.outputs);
@@ -359,7 +395,11 @@ void yolov2_hls_ps(network *net, float *input)
 					out_align = in_ptr[i] & 0xFFFFF000;
 					out_left_num = in_ptr[i] & 0xFFF;
 
+#ifdef DMA_TRANSFER
+					copy_dev2mem((uint8_t *)region_buf, out_left_num + 13*14*425*sizeof(int16_t), out_align );
+#else
 					copy_dev2mem((uint8_t *)region_buf, out_left_num + 13*14*425*sizeof(int16_t), out_align+PL_BASEADDR);
+#endif
 					tmp_iofmQ_pow = pow(2.0, -iofmQ[offset_index]);
 					for(int k = 0; k<13*425; k++)
 						for(int j = 0; j < 13; j++)

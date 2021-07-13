@@ -14,6 +14,8 @@
 #include <stdint.h>
 #include <math.h>
 
+#define DMA_TRANSFER 1
+
 #define XFPGA_ACC_CTRL_BUS_ADDR_AP_CTRL            0x00
 #define XFPGA_ACC_CTRL_BUS_ADDR_GIE                0x04
 #define XFPGA_ACC_CTRL_BUS_ADDR_IER                0x08
@@ -98,22 +100,26 @@
 #define BETA_BASEADDR    0x8000000	//0x00005414 =     21524 Bytes
 #define MEM_BASEADDR     0xC000000	//
 */
-
-
+/*
 #define PL_BASEADDR	 0x4900000000
 #define ACC_BASEADDR     0x82100000
 #define WEIGHT_BASEADDR  0x0		//0x06129EC0 = 101883584 Bytes
 #define BETA_BASEADDR    0x6140000	//0x00005414 =     21524 Bytes
 #define MEM_BASEADDR     0x6180000	//
+*/
 
-
-/*
+#ifdef DMA_TRANSFER
+#define ACC_BASEADDR     0x82000000
+#define WEIGHT_BASEADDR  0x80000000		//0x06129EC0 = 101883584 Bytes
+#define BETA_BASEADDR    0x86140000		//0x00005414 =     21524 Bytes
+#define MEM_BASEADDR     0x86180000		//
+#else
 #define PL_BASEADDR	 0x4800000000
 #define ACC_BASEADDR     0x82000000
 #define WEIGHT_BASEADDR  0x0		//0x06129EC0 = 101883584 Bytes
 #define BETA_BASEADDR    0x6140000	//0x00005414 =     21524 Bytes
 #define MEM_BASEADDR     0x6180000	//
-*/
+#endif
 
 #define HW_S 2
 #define K 3
@@ -144,7 +150,7 @@
 #define OnChipIB_Width  ((Tc-1)*HW_S+K)
 #define OnChipIB_Height ((Tr-1)*HW_S+K)
 
-#define HPAGESIZE (2*1024*1024)
+#define HPAGESIZE (64*1024*1024)
 
 void copy_mem2dev(uint8_t *orig,uint32_t byte_num, unsigned long in_buffer);
 
